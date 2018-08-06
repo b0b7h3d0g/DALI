@@ -224,7 +224,10 @@ void Dali::scanShortAdd()
 		dali.transmit(add_byte, 0xA1);
 		
 		response = dali.receive();
-		
+
+    //added this in and works better now need to wait for response to arrive
+    delay(100);
+    
 		if (dali.getResponse) {
 			
 			dali.transmit(add_byte, ON_C); // switch on
@@ -276,7 +279,7 @@ void Dali::scanShortAdd()
 }
 
 
-int Dali::readBinaryString(char *s) 
+int Dali::readBinaryString(const char *s) 
 {
 	int result = 0;
 	while (*s) {
