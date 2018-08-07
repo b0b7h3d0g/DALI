@@ -127,6 +127,7 @@ void Dali::busTest() //DALI bus test
 	//Receive response from luminaries: max and min level
 	dali.transmit(BROADCAST_C, QUERY_STATUS);
 	maxLevel = dali.maxResponseLevel();
+	
 	dali.transmit(BROADCAST_C, QUERY_STATUS);
 	minLevel = dali.minResponseLevel();
 

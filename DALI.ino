@@ -23,12 +23,14 @@ void setup() {
 
   dali.setupTransmit(DALI_TX);
   dali.setupAnalogReceive(DALI_RX_A);
-  //dali.busTest();
+  dali.busTest();
  
   help(); //Show help
 
   // TODO: restore state here
   // dali.transmit(BROADCAST_C, OFF_C);
+  // dali.transmit(BROADCAST_C, ON_C);
+  cycle();
 }
 
 void help() {
@@ -56,7 +58,6 @@ void cycle() {
 
     for (int i = 254; i > 192; i = i - 1) {
       dali.transmit(BROADCAST_DP, i);
-      Serial.println(i);
       delay(2000);
     }
 
