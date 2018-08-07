@@ -1,15 +1,10 @@
-
-
 #include "Dali.h"
 #include <SoftwareSerial.h>
-
-
 
 Dali::Dali() //constructor
 {
   applyWorkAround1Mhz = 0;
 }
-
 
 void Dali::setTxPin(uint8_t pin)
 {
@@ -33,11 +28,11 @@ void Dali::setupAnalogReceive(uint8_t pin)
 	setRxAnalogPin(pin); // user sets the analog pin as input
 }
 
-
 void Dali::setupTransmit(uint8_t pin)
 {
   setTxPin(pin);
   speedFactor = 2;
+
   //we don't use exact calculation of passed time spent outside of transmitter
   //because of high ovehead associated with it, instead we use this 
   //emprirically determined values to compensate for the time loss
@@ -50,26 +45,24 @@ void Dali::setupTransmit(uint8_t pin)
     uint16_t compensationFactor = 4; 
   #endif  
 
-#if (F_CPU == 80000000UL) || (F_CPU == 160000000)   // ESP8266 80MHz or 160 MHz
-  delay1 = delay2 = (HALF_BIT_INTERVAL >> speedFactor) - 2;
-#else
-  delay1 = (HALF_BIT_INTERVAL >> speedFactor) - compensationFactor;
-  delay2 = (HALF_BIT_INTERVAL >> speedFactor) - 2;
-  period = delay1 + delay2;
+  #if (F_CPU == 80000000UL) || (F_CPU == 160000000)   // ESP8266 80MHz or 160 MHz
+    delay1 = delay2 = (HALF_BIT_INTERVAL >> speedFactor) - 2;
+  #else
+    delay1 = (HALF_BIT_INTERVAL >> speedFactor) - compensationFactor;
+    delay2 = (HALF_BIT_INTERVAL >> speedFactor) - 2;
+    period = delay1 + delay2;
   
-  #if F_CPU == 1000000UL
-    delay2 -= 22; //22+2 = 24 is divisible by 8
-    if (applyWorkAround1Mhz) { //definition of micro delay is broken for 1MHz speed in tiny cores as of now (May 2013)
-      //this is a workaround that will allow us to transmit on 1Mhz
-      //divide the wait time by 8
-      delay1 >>= 3;
-      delay2 >>= 3;
-    }
+    #if F_CPU == 1000000UL
+      delay2 -= 22; //22+2 = 24 is divisible by 8
+      if (applyWorkAround1Mhz) { //definition of micro delay is broken for 1MHz speed in tiny cores as of now (May 2013)
+        //this is a workaround that will allow us to transmit on 1Mhz
+        //divide the wait time by 8
+        delay1 >>= 3;
+        delay2 >>= 3;
+      }
+    #endif
   #endif
-#endif
-
-	}
-
+}
 
 void Dali::transmit(uint8_t cmd1, uint8_t cmd2) // transmit commands to DALI bus (address byte, command byte)
 {
@@ -106,7 +99,6 @@ void Dali::sendZero(void)
   delayMicroseconds(delay2);
   digitalWrite(TxPin, LOW);
   delayMicroseconds(delay1);
-
 }
 
 
@@ -139,11 +131,6 @@ void Dali::busTest() //DALI bus test
 	minLevel = dali.minResponseLevel();
 
 	dali.analogLevel = (int)(maxLevel + minLevel) / 2;
-	
-	
-	
-
-
 }
 
 
@@ -164,8 +151,6 @@ int Dali::minResponseLevel()
 	uint16_t rxmin = 1024;
 	uint16_t dalidata;
 	long idalistep;
-
-	
 	
 	for (idalistep = 0; idalistep < dali.daliTimeout; idalistep = idalistep + dalistep) {
 		dalidata = analogRead(RxAnalogPin);
@@ -180,12 +165,10 @@ int Dali::minResponseLevel()
 // define max response level
 int Dali::maxResponseLevel() 
 {
-
 	const uint8_t dalistep = 40; //us
 	uint16_t rxmax = 0;
 	uint16_t dalidata;
 	long idalistep;
-
 	
 	for (idalistep = 0; idalistep < dali.daliTimeout; idalistep = idalistep + dalistep) {
 		dalidata = analogRead(dali.RxAnalogPin);
@@ -194,6 +177,7 @@ int Dali::maxResponseLevel()
 		};
 		delayMicroseconds(dalistep);
 	}
+ 
 	return rxmax;
 }
 
@@ -201,7 +185,6 @@ int Dali::maxResponseLevel()
 //scan for individual short address
 void Dali::scanShortAdd()
 {
-
 	const int delayTime = 10;
 	const uint8_t start_ind_adress = 0;
 	const uint8_t finish_ind_adress = 127;
@@ -220,28 +203,23 @@ void Dali::scanShortAdd()
 
 		add_byte = 1 + (device_short_add << 1); // convert short address to address byte
 		
-		
 		dali.transmit(add_byte, 0xA1);
 		
 		response = dali.receive();
 
-    //added this in and works better now need to wait for response to arrive
-    delay(100);
+		// added this in and works better now need to wait for response to arrive
+		delay(100);
     
-		if (dali.getResponse) {
-			
+		if (dali.getResponse) {	
 			dali.transmit(add_byte, ON_C); // switch on
 			delay(1000);
 			dali.transmit(add_byte, OFF_C); // switch off
 			delay(1000);
-
 		}
 		else {
 			response = 0;
 		}
 
-		
-		
 		if (dali.msgMode) {
 			Serial.print("BIN: ");
 			Serial.print(device_short_add, BIN);
@@ -267,15 +245,12 @@ void Dali::scanShortAdd()
 			else {
 				Serial.println(0, BIN);
 			}
-			
 		}
-
 	}
 
 	dali.transmit(BROADCAST_C, ON_C); // Broadcast On
 	Serial.println();
 	delay(delayTime);
-
 }
 
 
@@ -300,8 +275,10 @@ bool Dali::cmdCheck(String & input, int & cmd1, int & cmd2)
 		test = false; //check if command contain 16bit
 	}
 	else {
-		for (int i = 0; i <= input.length() - 1; i++) {
-			if ((int)input.charAt(i) == 49 or (int)input.charAt(i) == 48) {}
+		for (uint i = 0; i <= input.length() - 1; i++) {
+			if ((int)input.charAt(i) == 49 or (int)input.charAt(i) == 48) {
+
+			}
 			else {
 				test = false;
 			};
@@ -327,7 +304,6 @@ void Dali::initialisation() {
 	uint8_t middlebyte;
 	uint8_t lowbyte;
 	uint8_t short_add = 0;
-	uint8_t cmd2;
 
 	delay(delaytime);
 	dali.transmit(BROADCAST_C, RESET);
@@ -345,7 +321,7 @@ void Dali::initialisation() {
 	dali.transmit(0b10100111, 0b00000000); //randomise
 
 	if (dali.msgMode) {
-		Serial.println("Searching fo long addresses:");
+		Serial.println("Searching for long addresses:");
 	}
 
 	while (longadd <= 0xFFFFFF - 2 and short_add <= 64) {
@@ -409,7 +385,7 @@ void Dali::initialisation() {
 			short_add++;
 
 			if (dali.msgMode) {	
-			Serial.println("Assigning a short address");
+			  Serial.println("Assigning a short address");
 			}
 
 			high_longadd = 0xFFFFFF;
@@ -430,9 +406,6 @@ void Dali::initialisation() {
 
 
 uint8_t Dali::receive() {
-
-
-	
 	unsigned long startFuncTime = 0;
 	bool previousLogicLevel = 1;
 	bool currentLogicLevel = 1;
@@ -448,7 +421,7 @@ uint8_t Dali::receive() {
 	
 	// add check for micros overlap here!!!
 
-	while (micros() - startFuncTime < dali.daliTimeout and i < arrLength)
+	while (micros() - startFuncTime < (ulong)dali.daliTimeout and i < arrLength)
 	{
 		// geting response
 		if (analogRead(dali.RxAnalogPin) > dali.analogLevel) {
@@ -464,12 +437,9 @@ uint8_t Dali::receive() {
 			previousLogicLevel = currentLogicLevel;
 			dali.getResponse = true;
 			i++;
-
 		}
 	}
 
-		
-	
 	arrLength = i;
 
 	//decoding to manchester
@@ -485,10 +455,6 @@ uint8_t Dali::receive() {
 		}
 	}
 
-
-
-
-
 	k = 8;
 
 	for (i = 1; i < arrLength; i++) {
@@ -500,15 +466,11 @@ uint8_t Dali::receive() {
 		}
 	}
 
-	
 	//remove start bit
 	response = (uint8_t)response;
 	
 	return response;
 
 }
-
-
-
 
 	Dali dali;
