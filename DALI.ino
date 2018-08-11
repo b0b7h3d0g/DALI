@@ -1,16 +1,8 @@
 #include "Dali.h"
 
-const int DALI_TX = D0;
-const int DALI_RX_A = A0;
-
-#define BROADCAST_DP 0b11111110
-#define BROADCAST_C 0b11111111
-#define ON_DP 0b11111110
-#define OFF_DP 0b00000000
-#define ON_C 0b00000101
-#define OFF_C 0b00000000
-#define QUERY_STATUS 0b10010000
-#define RESET 0b00100000
+const int DALI_TX = D0;   // DALI Digital Out
+const int DALI_RX_A = A0; // DALI Analog In
+const int CYCLE_PIN = D3; // Push-button between D8 and GDN
 
 String inputString = "";         // a string to hold incoming data
 boolean stringComplete = false;  // whether the string is complete
@@ -18,19 +10,19 @@ boolean stringComplete = false;  // whether the string is complete
 void setup() {
   // initialize serial:
   Serial.begin(115200);
+  pinMode(CYCLE_PIN, INPUT);
 
   dali.msgMode = true;
 
   dali.setupTransmit(DALI_TX);
   dali.setupAnalogReceive(DALI_RX_A);
   dali.busTest();
- 
+
   help(); //Show help
 
   // TODO: restore state here
   // dali.transmit(BROADCAST_C, OFF_C);
   // dali.transmit(BROADCAST_C, ON_C);
-  cycle();
 }
 
 void help() {
@@ -42,18 +34,13 @@ void help() {
   Serial.println("scan -  device short address scan");
   Serial.println("initialise -  start process of initialisation");
   Serial.println("test -  start receiving test");
-  Serial.println("analog - read analog port value");
+  Serial.println("status - read analog port value");
   Serial.println("cycle - fade in/out using ARC");
   Serial.println("");
 }
 
 void cycle() {
-  Serial.println("initializing cycle()");
-
-  dali.transmit(BROADCAST_C, ON_C);
-  delay(20000); // wait for HPS
-
-  while (Serial.available() == 0) {
+  do {
     Serial.println("execute cycle fade-out");
 
     for (int i = 254; i > 192; i = i - 1) {
@@ -72,6 +59,18 @@ void cycle() {
 
     delay(10000); // wait for HPS
   }
+  while(digitalRead(CYCLE_PIN) == 1 || Serial.available() == 0);
+}
+
+
+void showStatus() {
+   int pinState = digitalRead(CYCLE_PIN);
+   int analogValue = analogRead(DALI_RX_A);
+
+   Serial.printf("Chip ID = %08X\n", ESP.getChipId());
+   Serial.printf("DALI Level: %i\n", dali.analogLevel);
+   Serial.printf("Analog Read: %f\n", analogValue * (3.2 / 1023.0)); // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 3.2V)
+   Serial.printf("Cycle Read: %s\n", (pinState)? "HIGH": "LOW");
 }
 
 void testReceive () {
@@ -99,13 +98,19 @@ void loop() {
     }
   }
 
-  // print the string when a newline arrives:
+  // trigger cycle on pin high
+  if (digitalRead(CYCLE_PIN) == 1) {
+    stringComplete = true;
+    inputString = "cycle";
+  }
+
+  // execute the command
   if (stringComplete) {
     Serial.println("cmd: " + inputString);
 
     if (inputString == "cycle") {
       cycle();
-    };
+    }; // fade-in-out
 
     if (inputString == "scan") {
       dali.scanShortAdd();
@@ -131,9 +136,8 @@ void loop() {
       testReceive();
     }; //graph
 
-    if (inputString == "analog") {
-      Serial.println(dali.analogLevel);
-      Serial.println(analogRead(DALI_RX_A));
+    if (inputString == "status") {
+      showStatus();
     };
 
     if (dali.cmdCheck(inputString, cmd1, cmd2)) {
